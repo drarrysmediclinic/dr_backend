@@ -894,14 +894,16 @@ export const AddAdminProduct = async (req, res) => {
       Category,
       tag,
       features,
-      specifications, gst, weight, hsn, sku, canonical
+      specifications, gst, weight, hsn, sku, canonical,userId
     } = req.body;
 
     // Validation
-    if (!title || !slug || !salePrice) {
+    if (!title || !slug || !salePrice || !userId || !Category) {
+      console.log(userId)
       return res.status(400).send({
         success: false,
         message: "Please Provide All Fields",
+
       });
     }
 
@@ -959,7 +961,7 @@ export const AddAdminProduct = async (req, res) => {
       Category,
       tag,
       features,
-      specifications: updatespecifications, gst, weight, hsn, sku, canonical
+      specifications: updatespecifications, gst, weight, hsn, sku, canonical,userId
     });
 
 
@@ -985,6 +987,7 @@ export const getAllProductFillAdmin = async (req, res) => {
     const page = parseInt(req.query.page) || 1; // Current page, default is 1
     const limit = parseInt(req.query.limit) || 10; // Number of documents per page, default is 10
     const searchTerm = req.query.search || ""; // Get search term from the query parameters
+    const userId = req.query.userId || ""; // Get search term from the query parameters
 
     const skip = (page - 1) * limit;
 
@@ -996,7 +999,9 @@ export const getAllProductFillAdmin = async (req, res) => {
         { slug: { $regex: searchTerm, $options: "i" } }, // Case-insensitive email search
       ];
     }
-
+    if (userId !== 'null' && userId) {
+      query.userId = userId;
+    }
     const totalProduct = await productModel.countDocuments();
 
     const Product = await productModel
@@ -1004,7 +1009,11 @@ export const getAllProductFillAdmin = async (req, res) => {
       .sort({ _id: -1 }) // Sort by _id in descending order
       .skip(skip)
       .limit(limit)
-      .lean();
+      .lean()
+      .populate("userId", "username email type"); // Fixed the comma issue
+
+
+
 
     if (!Product) {
       return res.status(200).send({
@@ -1829,6 +1838,8 @@ export const getAllOrderAdmin = async (req, res) => {
     const limit = parseInt(req.query.limit) || 10; // Number of documents per page, default is 10
     const searchTerm = req.query.search || ""; // Get search term from the query parameters
     const statusFilter = req.query.status ? req.query.status.split(',') : []; // Get status filter from the query parameters and split into an array
+    const employeeId = req.query.employeeId ; // Get search term from the query parameters
+    const employee = req.query.employee; // Get search term from the query parameters
 
     const skip = (page - 1) * limit;
 
@@ -1846,8 +1857,16 @@ export const getAllOrderAdmin = async (req, res) => {
     if (statusFilter.length > 0) {
       query.status = { $in: statusFilter }; // Use $in operator to match any of the values in the array
     }
-
-
+    if (employeeId.length > 0 && employeeId !== 'null') {
+      query.agentId = { $in: employeeId }; // Use $in operator to match any of the values in the array
+    }
+    if(employee === "true"){
+      query.agentId = { $ne: null }; // agentId should not be null
+    }
+    if(employee === "false"){
+      query.agentId = { $in: null }; // agentId should not be null
+    }
+     
     const total = await orderModel.countDocuments(query); // Count total documents matching the query
 
     const Order = await orderModel
@@ -1857,6 +1876,10 @@ export const getAllOrderAdmin = async (req, res) => {
       .limit(limit)
       .populate({
         path: "userId",
+        model: userModel,
+        select: "username",
+      }).populate({
+        path: "agentId",
         model: userModel,
         select: "username",
       }).lean();
@@ -1889,12 +1912,53 @@ export const getAllOrderAdmin = async (req, res) => {
 };
 
 
-export const editOrderAdmin = async (req, res) => {
+
+export const AdminGetAllEmployee = async (req, res) => {
+  try {
+    // Extract the category from the query parameters
+    const { category } = req.query; 
+
+    console.log(req.query);
+    // Build the filter object
+    const filter = { type: 1 };
+    if (category) {
+      filter.department = category; // Add category filter only if it exists
+    }
+
+    // Fetch users based on filter
+    const Users = await userModel.find(filter, '_id username');
+
+    if (!Users || Users.length === 0) {
+      return res.status(200).send({
+        message: 'No User Found',
+        success: false,
+      });
+    }
+
+    return res.status(200).send({
+      message: 'All User List',
+      proCount: Users.length,
+      success: true,
+      Users,
+    });
+
+  } catch (error) {
+    return res.status(500).send({
+      message: `Error while fetching employees: ${error.message}`,
+      success: false,
+      error,
+    });
+  }
+};
+
+
+export const editOrderEmployeeAdmin = async (req, res) => {
   try {
     const { id } = req.params;
-    const { status } = req.body;
+    const { agentId } = req.body;
 
-    const order = await orderModel.findById(id).populate('userId'); // Fetch order details including user
+
+    const order = await orderModel.findById(id);
 
     if (!order) {
       return res.status(404).json({
@@ -1903,9 +1967,50 @@ export const editOrderAdmin = async (req, res) => {
       });
     }
 
-    const user = order.userId[0]; // Assuming there's only one user associated with the order
+    order.agentId = agentId;
 
-    const { email, username, _id } = user; // Extract user email
+    await order.save();
+
+    // Fetch the updated order to confirm the change
+    const updatedOrder = await orderModel.findById(id);
+    console.log(`Updated agentId: ${updatedOrder.agentId}`);
+
+    return res.status(200).json({
+      message: "Order Updated!",
+      success: true,
+      updatedOrder,
+    });
+
+  } catch (error) {
+    console.error(`Error while updating Order: ${error}`);
+    return res.status(500).json({
+      message: `Error while updating Order: ${error}`,
+      success: false,
+      error,
+    });
+  }
+};
+
+
+
+export const editOrderAdmin = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    console.log(status)
+    const order = await orderModel.findById(id).populate('userId'); // Fetch order details including user
+
+    if (!order) {
+      return res.status(400).json({
+        message: "Order not found",
+        success: false,
+      });
+    }
+
+    // const user = order.userId[0]; // Assuming there's only one user associated with the order
+
+    // const { email, username, _id } = user; // Extract user email
 
     let updateFields = {
       status,
@@ -1915,101 +2020,244 @@ export const editOrderAdmin = async (req, res) => {
       new: true,
     });
 
-    // Configure nodemailer transporter
-    const transporter = nodemailer.createTransport({
-      // SMTP configuration
-      host: process.env.MAIL_HOST, // Update with your SMTP host
-      port: process.env.MAIL_PORT, // Update with your SMTP port
-      secure: process.env.MAIL_ENCRYPTION, // Set to true if using SSL/TLS
-      auth: {
-        user: process.env.MAIL_USERNAME, // Update with your email address
-        pass: process.env.MAIL_PASSWORD, // Update with your email password
-      }
+    // // Configure nodemailer transporter
+    // const transporter = nodemailer.createTransport({
+    //   // SMTP configuration
+    //   host: process.env.MAIL_HOST, // Update with your SMTP host
+    //   port: process.env.MAIL_PORT, // Update with your SMTP port
+    //   secure: process.env.MAIL_ENCRYPTION, // Set to true if using SSL/TLS
+    //   auth: {
+    //     user: process.env.MAIL_USERNAME, // Update with your email address
+    //     pass: process.env.MAIL_PASSWORD, // Update with your email password
+    //   }
+    // });
+
+    // // Email message
+    // const mailOptions = {
+    //   from: process.env.MAIL_FROM_ADDRESS, // Update with your email address
+    //   to: email, // Use the extracted email here
+    //   subject: `cayroshop.com Order ${status === '0' ? 'cancel' :
+    //     status === '1' ? 'Placed' :
+    //       status === '2' ? 'Accepted' :
+    //         status === '3' ? 'Packed' :
+    //           status === '4' ? 'Shipped' :
+    //             status === '5' ? 'Delivered' :
+    //               'Unknown'
+    //     }`,
+    //   html: `
+    //       <div class="bg-light w-100 h-100" style="background-color:#f8f9fa!important;width: 90%;font-family:sans-serif;padding:20px;border-radius:10px;padding: 100px 0px;margin: auto;">
+    //  <div class="modal d-block" style="
+    //     width: 500px;
+    //     background: white;
+    //     padding: 20px;
+    //     margin: auto;
+    //     border: 2px solid #8080802e;
+    //     border-radius: 10px;
+    // ">
+    //   <div class="modal-dialog">
+    //     <div class="modal-content" style="
+    //     text-align: center;
+    // ">
+    //       <div class="modal-header">
+    // <h1 style="color:black;"> Cayro Shop <h1>
+    //       </div>
+    //       <div class="modal-body text-center">
+    //         <h5 style="
+    //     margin: 0px;
+    //     margin-top: 14px;
+    //     font-size: 20px;color:black;
+    // "> Order Id : #${order.orderId} </h5>
+    //        <p style="color:black;" >Hey ${username},</p>
+    //       <svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 24 24" fill="none" stroke="#47ca00" stroke-width="2" stroke-linecap="square" stroke-linejoin="arcs"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+    //        <h2 style="color:black;"> Your Order Is ${status === '1' ? 'Placed' :
+    //       status === '2' ? 'Accepted' :
+    //         status === '3' ? 'Packed' :
+    //           status === '4' ? 'Shipped' :
+    //             status === '5' ? 'Delivered' :
+    //               'Unknown'
+    //     }! </h2>
+         
+    //        <p style="color:black;" > We'll send you a shipping confirmation email
+    // as soon as your order ${status === '1' ? 'Placed' :
+    //       status === '2' ? 'Accepted' :
+    //         status === '3' ? 'Packed' :
+    //           status === '4' ? 'Shipped' :
+    //             status === '5' ? 'Delivered' :
+    //               'Unknown'
+    //     }. </p>
+    //       </div>
+    //       <div class="modal-footer">
+      
+    //         <a href="https://cayroshop.com/account/order/${_id}/${updatedOrder._id}" style="
+    //     background: green;
+    //     color: white;
+    //     padding: 10px;
+    //     display: block;
+    //     margin: auto;
+    //     border-radius: 6px;
+    //     text-decoration: none;
+    // "> Track Order</a>
+    //       </div>
+    //     </div>
+    //   </div>
+    // </div> </div>
+    //       `
+    // };
+
+    // // Send email
+    // transporter.sendMail(mailOptions, (error, info) => {
+    //   if (error) {
+    //     console.error(error);
+    //     res.status(500).send('Failed to send email');
+    //   } else {
+    //     return res.status(200).json({
+    //       message: "Order Updated!",
+    //       success: true,
+    //     });
+    //   }
+    // });
+
+    return res.status(200).json({
+      message: "Order Updated!",
+      success: true,
     });
 
-    // Email message
-    const mailOptions = {
-      from: process.env.MAIL_FROM_ADDRESS, // Update with your email address
-      to: email, // Use the extracted email here
-      subject: `cayroshop.com Order ${status === '0' ? 'cancel' :
-        status === '1' ? 'Placed' :
-          status === '2' ? 'Accepted' :
-            status === '3' ? 'Packed' :
-              status === '4' ? 'Shipped' :
-                status === '5' ? 'Delivered' :
-                  'Unknown'
-        }`,
-      html: `
-          <div class="bg-light w-100 h-100" style="background-color:#f8f9fa!important;width: 90%;font-family:sans-serif;padding:20px;border-radius:10px;padding: 100px 0px;margin: auto;">
-     <div class="modal d-block" style="
-        width: 500px;
-        background: white;
-        padding: 20px;
-        margin: auto;
-        border: 2px solid #8080802e;
-        border-radius: 10px;
-    ">
-      <div class="modal-dialog">
-        <div class="modal-content" style="
-        text-align: center;
-    ">
-          <div class="modal-header">
-    <h1 style="color:black;"> Cayro Shop <h1>
-          </div>
-          <div class="modal-body text-center">
-            <h5 style="
-        margin: 0px;
-        margin-top: 14px;
-        font-size: 20px;color:black;
-    "> Order Id : #${order.orderId} </h5>
-           <p style="color:black;" >Hey ${username},</p>
-          <svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 24 24" fill="none" stroke="#47ca00" stroke-width="2" stroke-linecap="square" stroke-linejoin="arcs"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-           <h2 style="color:black;"> Your Order Is ${status === '1' ? 'Placed' :
-          status === '2' ? 'Accepted' :
-            status === '3' ? 'Packed' :
-              status === '4' ? 'Shipped' :
-                status === '5' ? 'Delivered' :
-                  'Unknown'
-        }! </h2>
-         
-           <p style="color:black;" > We'll send you a shipping confirmation email
-    as soon as your order ${status === '1' ? 'Placed' :
-          status === '2' ? 'Accepted' :
-            status === '3' ? 'Packed' :
-              status === '4' ? 'Shipped' :
-                status === '5' ? 'Delivered' :
-                  'Unknown'
-        }. </p>
-          </div>
-          <div class="modal-footer">
-      
-            <a href="https://cayroshop.com/account/order/${_id}/${updatedOrder._id}" style="
-        background: green;
-        color: white;
-        padding: 10px;
-        display: block;
-        margin: auto;
-        border-radius: 6px;
-        text-decoration: none;
-    "> Track Order</a>
-          </div>
-        </div>
-      </div>
-    </div> </div>
-          `
+  } catch (error) {
+    return res.status(400).json({
+      message: `Error while updating Rating: ${error}`,
+      success: false,
+      error,
+    });
+  }
+};
+
+export const editLeadStatusAdmin = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    console.log(status)
+    const order = await orderModel.findById(id).populate('userId'); // Fetch order details including user
+
+    if (!order) {
+      return res.status(400).json({
+        message: "Order not found",
+        success: false,
+      });
+    }
+
+    // const user = order.userId[0]; // Assuming there's only one user associated with the order
+
+    // const { email, username, _id } = user; // Extract user email
+
+    let updateFields = {
+      leadStatus: status,
     };
 
-    // Send email
-    transporter.sendMail(mailOptions, (error, info) => {
-      if (error) {
-        console.error(error);
-        res.status(500).send('Failed to send email');
-      } else {
-        return res.status(200).json({
-          message: "Order Updated!",
-          success: true,
-        });
-      }
+    const updatedOrder = await orderModel.findByIdAndUpdate(id, updateFields, {
+      new: true,
+    });
+
+    // // Configure nodemailer transporter
+    // const transporter = nodemailer.createTransport({
+    //   // SMTP configuration
+    //   host: process.env.MAIL_HOST, // Update with your SMTP host
+    //   port: process.env.MAIL_PORT, // Update with your SMTP port
+    //   secure: process.env.MAIL_ENCRYPTION, // Set to true if using SSL/TLS
+    //   auth: {
+    //     user: process.env.MAIL_USERNAME, // Update with your email address
+    //     pass: process.env.MAIL_PASSWORD, // Update with your email password
+    //   }
+    // });
+
+    // // Email message
+    // const mailOptions = {
+    //   from: process.env.MAIL_FROM_ADDRESS, // Update with your email address
+    //   to: email, // Use the extracted email here
+    //   subject: `cayroshop.com Order ${status === '0' ? 'cancel' :
+    //     status === '1' ? 'Placed' :
+    //       status === '2' ? 'Accepted' :
+    //         status === '3' ? 'Packed' :
+    //           status === '4' ? 'Shipped' :
+    //             status === '5' ? 'Delivered' :
+    //               'Unknown'
+    //     }`,
+    //   html: `
+    //       <div class="bg-light w-100 h-100" style="background-color:#f8f9fa!important;width: 90%;font-family:sans-serif;padding:20px;border-radius:10px;padding: 100px 0px;margin: auto;">
+    //  <div class="modal d-block" style="
+    //     width: 500px;
+    //     background: white;
+    //     padding: 20px;
+    //     margin: auto;
+    //     border: 2px solid #8080802e;
+    //     border-radius: 10px;
+    // ">
+    //   <div class="modal-dialog">
+    //     <div class="modal-content" style="
+    //     text-align: center;
+    // ">
+    //       <div class="modal-header">
+    // <h1 style="color:black;"> Cayro Shop <h1>
+    //       </div>
+    //       <div class="modal-body text-center">
+    //         <h5 style="
+    //     margin: 0px;
+    //     margin-top: 14px;
+    //     font-size: 20px;color:black;
+    // "> Order Id : #${order.orderId} </h5>
+    //        <p style="color:black;" >Hey ${username},</p>
+    //       <svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 24 24" fill="none" stroke="#47ca00" stroke-width="2" stroke-linecap="square" stroke-linejoin="arcs"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+    //        <h2 style="color:black;"> Your Order Is ${status === '1' ? 'Placed' :
+    //       status === '2' ? 'Accepted' :
+    //         status === '3' ? 'Packed' :
+    //           status === '4' ? 'Shipped' :
+    //             status === '5' ? 'Delivered' :
+    //               'Unknown'
+    //     }! </h2>
+         
+    //        <p style="color:black;" > We'll send you a shipping confirmation email
+    // as soon as your order ${status === '1' ? 'Placed' :
+    //       status === '2' ? 'Accepted' :
+    //         status === '3' ? 'Packed' :
+    //           status === '4' ? 'Shipped' :
+    //             status === '5' ? 'Delivered' :
+    //               'Unknown'
+    //     }. </p>
+    //       </div>
+    //       <div class="modal-footer">
+      
+    //         <a href="https://cayroshop.com/account/order/${_id}/${updatedOrder._id}" style="
+    //     background: green;
+    //     color: white;
+    //     padding: 10px;
+    //     display: block;
+    //     margin: auto;
+    //     border-radius: 6px;
+    //     text-decoration: none;
+    // "> Track Order</a>
+    //       </div>
+    //     </div>
+    //   </div>
+    // </div> </div>
+    //       `
+    // };
+
+    // // Send email
+    // transporter.sendMail(mailOptions, (error, info) => {
+    //   if (error) {
+    //     console.error(error);
+    //     res.status(500).send('Failed to send email');
+    //   } else {
+    //     return res.status(200).json({
+    //       message: "Order Updated!",
+    //       success: true,
+    //     });
+    //   }
+    // });
+
+    return res.status(200).json({
+      message: "Order Updated!",
+      success: true,
     });
 
   } catch (error) {

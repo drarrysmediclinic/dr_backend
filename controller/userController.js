@@ -1584,108 +1584,128 @@ export const HomeSendEnquire_old = async (req, res) => {
 
 
 export const HomeSendEnquire = async (req, res) => {
+
+  
+    // Calculate the auto-increment ID
+    const lastOrder = await orderModel.findOne().sort({ _id: -1 }).limit(1);
+    let order_id;
+
+    if (lastOrder) {
+      // Convert lastOrder.orderId to a number before adding 1
+      const lastOrderId = parseInt(lastOrder.orderId);
+      order_id = lastOrderId + 1;
+    } else {
+      order_id = 1;
+    }
+
+
   const {
     fullname,
     email,
     phone,
     service,
-    QTY,
-    userId,
-    userEmail,
-    type,
-    Requirement,
-    name,
-    organizationName,
-    designation,
-    interested,
+    pincode,
+    state,
+    statename,
+    address,
+    city,
+    bookingDate,
+    bookingTime,
+    requirement,
+    category
   } = req.body;
-  console.log(userId, userEmail);
-
+ 
   try {
     // Save data to the database
-    const newEnquire = new enquireModel({
+    const newEnquire = new orderModel({
       fullname,
       email,
       phone,
       service,
-      QTY,
-      Requirement,
-      userId,
-      userEmail,
-      type,
-      name,
-      organizationName,
-      designation,
-      interested,
+      pincode,
+      state,
+      statename,
+      address,
+      city,
+      bookingDate,
+      bookingTime,
+      requirement,
+      type:1,
+      orderId:order_id,
+      category: Array.isArray(category) ? category[0] : category  // Convert array to string
     });
 
     await newEnquire.save();
 
         
-       // Create the notification data object with dynamic values
-const notificationData = {
-  mobile: "918100188188",  // Replace with dynamic value if needed
-  templateid: "1193466729031008", // Template ID
-  overridebot: "yes", // Optional: Set to "yes" or "no"
-  template: {
-    components: [
-      {
-        type: "body",
-        parameters: [
-          { type: "text", text: fullname || "NA" },  
-          { type: "text", text: phone || "NA" },  
-          { type: "text", text: email || "NA" }, 
-          { type: "text", text: service || "NA" }, 
-          { type: "text", text: QTY || "NA" }  
-        ]
-      }
-    ]
-  }
-};
+//        // Create the notification data object with dynamic values
+// const notificationData = {
+//   mobile: "918100188188",  // Replace with dynamic value if needed
+//   templateid: "1193466729031008", // Template ID
+//   overridebot: "yes", // Optional: Set to "yes" or "no"
+//   template: {
+//     components: [
+//       {
+//         type: "body",
+//         parameters: [
+//           { type: "text", text: fullname || "NA" },  
+//           { type: "text", text: phone || "NA" },  
+//           { type: "text", text: email || "NA" }, 
+//           { type: "text", text: service || "NA" }, 
+//           { type: "text", text: QTY || "NA" }  
+//         ]
+//       }
+//     ]
+//   }
+// };
   
-   const WHATSAPP =   await axios.post(process.env.WHATSAPPAPI, notificationData, {
-        headers: {
-          "API-KEY": process.env.WHATSAPPKEY,
-          "Content-Type": "application/json"
-        }
-      });
-      console.log('WHATSAPP',WHATSAPP)
+//    const WHATSAPP =   await axios.post(process.env.WHATSAPPAPI, notificationData, {
+//         headers: {
+//           "API-KEY": process.env.WHATSAPPKEY,
+//           "Content-Type": "application/json"
+//         }
+//       });
+//       console.log('WHATSAPP',WHATSAPP)
 
     // Configure nodemailer transporter
-    const transporter = nodemailer.createTransport({
-      // SMTP configuration
-      host: process.env.MAIL_HOST, // Update with your SMTP host
-      port: process.env.MAIL_PORT, // Update with your SMTP port
-      secure: process.env.MAIL_ENCRYPTION, // Set to true if using SSL/TLS
-      auth: {
-        user: process.env.MAIL_USERNAME, // Update with your email address
-        pass: process.env.MAIL_PASSWORD, // Update with your email password
-      },
-    });
+    // const transporter = nodemailer.createTransport({
+    //   // SMTP configuration
+    //   host: process.env.MAIL_HOST, // Update with your SMTP host
+    //   port: process.env.MAIL_PORT, // Update with your SMTP port
+    //   secure: process.env.MAIL_ENCRYPTION, // Set to true if using SSL/TLS
+    //   auth: {
+    //     user: process.env.MAIL_USERNAME, // Update with your email address
+    //     pass: process.env.MAIL_PASSWORD, // Update with your email password
+    //   },
+    // });
 
-    // Conditional recipient list
-    const recipients = userEmail
-      ? `${userEmail}, ${process.env.MAIL_TO_ADDRESS}`
-      : process.env.MAIL_TO_ADDRESS;
+    // // Conditional recipient list
+    // const recipients = userEmail
+    //   ? `${userEmail}, ${process.env.MAIL_TO_ADDRESS}`
+    //   : process.env.MAIL_TO_ADDRESS;
 
-    // Email message
-    const mailOptions = {
-      from: process.env.MAIL_FROM_ADDRESS, // Update with your email address
-      to: recipients, // Update with your email address
-      subject: "New Enquire Form Submission",
-      text: `Name: ${fullname}\nEmail: ${email}\nPhone: ${phone}\nService: ${service}\nQTY:${QTY}`,
-    };
+    // // Email message
+    // const mailOptions = {
+    //   from: process.env.MAIL_FROM_ADDRESS, // Update with your email address
+    //   to: recipients, // Update with your email address
+    //   subject: "New Enquire Form Submission",
+    //   text: `Name: ${fullname}\nEmail: ${email}\nPhone: ${phone}\nService: ${service}\nQTY:${QTY}`,
+    // };
 
     // Send email
-    transporter.sendMail(mailOptions, (error, info) => {
-      if (error) {
-        console.error(error);
-        res.status(500).send("Failed to send email");
-      } else {
-        console.log("Email sent: " + info.response);
-        res.status(200).send("Email sent successfully");
-      }
-    });
+    // transporter.sendMail(mailOptions, (error, info) => {
+    //   if (error) {
+    //     console.error(error);
+    //     res.status(500).send("Failed to send email");
+    //   } else {
+    //     console.log("Email sent: " + info.response);
+    //     res.status(200).send("Email sent successfully");
+    //   }
+    // });
+
+    res.status(200).send("Email sent successfully");
+
+
   } catch (error) {
     console.error("Error in send data:", error);
     return res.status(500).json({
@@ -2116,7 +2136,7 @@ export const GetAllCategoriesBySlugController = async (req, res) => {
     // Fetch products based on filters with pagination
     const products = await productModel
       .find(filters)
-      .select("_id title regularPrice salePrice pImage variations slug")
+      .select("_id title regularPrice salePrice pImage variations slug features")
       .skip(skip)
       .limit(perPage)
       .lean();
@@ -2230,6 +2250,39 @@ export const userOrdersViewController = async (req, res) => {
       message: "Single Order Found By user ID and Order ID",
       success: true,
       userOrder: userOrder.orders[0], // Assuming there's only one order per user
+    });
+  } catch (error) {
+    // If any error occurs during the process, log it and return error response
+    console.log(error);
+    return res.status(400).json({
+      success: false,
+      message: "Error while getting order",
+      error,
+    });
+  }
+};
+
+export const FullOrdersViewController = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+
+    // Find the user by ID and populate their orders
+    const userOrder = await orderModel.findById(orderId).populate('agentId').exec();
+ 
+    console.log(userOrder,orderId)
+    // If user or order not found, return appropriate response
+    if (!userOrder) {
+      return res.status(400).json({
+        message: "Order Not Found By user or Order ID",
+        success: false,
+      });
+    }
+
+    // If user order found, return success response with the single order
+    return res.status(200).json({
+      message: "Single Order Found By user ID and Order ID",
+      success: true,
+      userOrder: userOrder, // Assuming there's only one order per user
     });
   } catch (error) {
     // If any error occurs during the process, log it and return error response
@@ -2704,6 +2757,33 @@ export const ViewAllZones = async (req, res) => {
   }
 };
 
+export const ViewAllZonesOnly = async (req, res) => {
+  try {
+    // Get all products, populate user data
+    const products = await productModel.find().populate('userId', 'statename city');
+
+    // Extract statename and city from each product's associated user
+    const locations = products.map(product => ({
+      statename: product.userId?.statename,
+      city: product.userId?.city,
+    }));
+
+    // Combine both statenames and cities into a single array
+    const allLocations = [...locations.map(loc => loc.statename), ...locations.map(loc => loc.city)];
+
+    // Remove duplicates by using a Set
+    const uniqueLocations = [...new Set(allLocations)].filter(location => location != undefined);
+
+    // Respond with the unique locations array
+    res.status(200).json({ success: true, uniqueLocations });
+  } catch (error) {
+    console.error("Error getting locations:", error);
+    res.status(500).json({ success: false, message: "Internal Server Error" });
+  }
+};
+
+
+
 export const ViewAllUserTaxes = async (req, res) => {
   try {
     // Query the database for all ratings where status is 1
@@ -2821,40 +2901,40 @@ const sendRegOTP = async (phone, otp) => {
 };
 
 const sendLogOTP = async (phone, otp) => {
-  try {
-    // Construct the request URL with query parameters
-    const queryParams = querystring.stringify({
-      username: "ynbhealth.trans",
-      password: "qEX1P",
-      unicode: false,
-      from: "YNBHLT",
-      to: phone,
-      text: `OTP is ${otp} for your account Login-Register in YNB Healthcare`,
-    });
-    const url = `https://pgapi.smartping.ai/fe/api/v1/send?${queryParams}`;
+  // try {
+  //   // Construct the request URL with query parameters
+  //   const queryParams = querystring.stringify({
+  //     username: "ynbhealth.trans",
+  //     password: "qEX1P",
+  //     unicode: false,
+  //     from: "YNBHLT",
+  //     to: phone,
+  //     text: `OTP is ${otp} for your account Login-Register in YNB Healthcare`,
+  //   });
+  //   const url = `https://pgapi.smartping.ai/fe/api/v1/send?${queryParams}`;
 
-    console.log(url);
-    // Make the GET request to send OTP
-    https
-      .get(url, (res) => {
-        console.log(`OTP API response status code: ${res.statusCode}`);
-        res.setEncoding("utf8");
-        res.on("data", (chunk) => {
-          console.log(`Response body: ${chunk}`);
-        });
-      })
-      .on("error", (error) => {
-        // console.log('url', url)
-        console.error("Error sending OTP:", error);
-        throw new Error("Failed to send OTP");
-      });
+  //   console.log(url);
+  //   // Make the GET request to send OTP
+  //   https
+  //     .get(url, (res) => {
+  //       console.log(`OTP API response status code: ${res.statusCode}`);
+  //       res.setEncoding("utf8");
+  //       res.on("data", (chunk) => {
+  //         console.log(`Response body: ${chunk}`);
+  //       });
+  //     })
+  //     .on("error", (error) => {
+  //       // console.log('url', url)
+  //       console.error("Error sending OTP:", error);
+  //       throw new Error("Failed to send OTP");
+  //     });
 
-    console.log("OTP request sent successfully");
-  } catch (error) {
-    // Handle errors
-    console.error("Error sending OTP:", error);
-    throw new Error("Failed to send OTP");
-  }
+  //   console.log("OTP request sent successfully");
+  // } catch (error) {
+  //   // Handle errors
+  //   console.error("Error sending OTP:", error);
+  //   throw new Error("Failed to send OTP");
+  // }
 };
 
 const sendOrderOTP = async (phone, order_id) => {
@@ -3068,18 +3148,14 @@ export const SignupLoginUser = async (req, res) => {
 
       // block
       console.log(otp);
-      // await sendLogOTP(phone, otp);
-      // return res.status(200).json({
-      //   success: true,
-      //   message: "New User found",
-      //   newUser: true,
-      //   otp: ecryptOTP,
-      // });
-      return res.status(400).json({
-        success: false,
-        message: "User Not Found",
-       });
-
+      await sendLogOTP(phone, otp);
+      return res.status(200).json({
+        success: true,
+        message: "New User found",
+        newUser: true,
+        otp: ecryptOTP,
+      });
+    
     }
   } catch (error) {
     console.error("Error on login:", error);
@@ -4704,7 +4780,7 @@ export const AuthUserByID = async (req, res) => {
 
       return res.status(200).json({
         success: true,
-        message: "login sucesssfully with password",
+        message: "login sucesssfully",
         existingUser: {
           _id: existingUser._id,
           username: existingUser.username,
@@ -5289,7 +5365,18 @@ export const ViewAllZonesDepartment = async (req, res) => {
   }
 };
 
+export const ViewAllZonesCategory = async (req, res) => {
+  try {
+    // Query the database for all ratings where status is 1
+    const Zones = await zonesModel.find({ status: "true" });
+    const Categories = await categoryModel.find({}).lean();
 
+    res.status(200).json({ success: true, Zones, Categories });
+  } catch (error) {
+    console.error("Error fetching ratings:", error);
+    res.status(500).json({ success: false, message: "Internal Server Error" });
+  }
+};
 
 export const getVendorById = async (req, res) => {
   try {
@@ -6538,6 +6625,8 @@ export const updateVendorProfileUser = async (req, res) => {
     } = req.body;
     console.log("Uploaded files:", req.files);
 
+    const olduser = await userModel.findById(id);
+
     const Doc1 = req.files ? req.files.Doc1 : undefined;
     const Doc2 = req.files ? req.files.Doc2 : undefined;
     const Doc3 = req.files ? req.files.Doc3 : undefined;
@@ -6548,7 +6637,6 @@ export const updateVendorProfileUser = async (req, res) => {
     let updateFields = {
       username,
       address,
-      email,
       pincode,
       gender,
       state,
@@ -6558,22 +6646,26 @@ export const updateVendorProfileUser = async (req, res) => {
       department,
     };
 
+    if(olduser.email !== email){
+      // updateFields.email = email;
+    }
+    
     if (password.length > 0 && confirm_password.length > 0) {
       const hashedPassword = await bcrypt.hash(password, 10);
       updateFields.password = hashedPassword;
     }
     // If the files exist, update the corresponding fields
     if (Doc1 && Doc1[0]) {
-      updateFields.Doc1 = Doc1[0].path;
+      updateFields.Doc1 = Doc1[0].path.replace(/\\/g, "/").replace(/^public\//, "");
     }
     if (Doc2 && Doc2[0]) {
-      updateFields.Doc2 = Doc2[0].path;
+      updateFields.Doc2 = Doc2[0].path.replace(/\\/g, "/").replace(/^public\//, "");
     }
     if (Doc3 && Doc3[0]) {
-      updateFields.Doc3 = Doc3[0].path;
+      updateFields.Doc3 = Doc3[0].path.replace(/\\/g, "/").replace(/^public\//, "");
     }
     if (profileImg && profileImg[0]) {
-      updateFields.profile = profileImg[0].path;
+      updateFields.profile = profileImg[0].path.replace(/\\/g, "/").replace(/^public\//, "");
     }
 
     const user = await userModel.findByIdAndUpdate(id, updateFields, {
@@ -6592,6 +6684,103 @@ export const updateVendorProfileUser = async (req, res) => {
     });
   }
 };
+
+export const getCategoriesWithProducts = async (req, res) => {
+  try {
+    // Get query parameters for filtering
+    const { location =  '' } = req.query;
+
+    // Fetch all categories
+    const categories = await categoryModel.find({}).exec();
+
+    // Fetch products for each category, limit to 20 per category, and filter by state and city
+    const categoriesWithProducts = await Promise.all(categories.map(async (category) => {
+      // Build the query to filter products by category
+      const productQuery = [
+        {
+          $match: {
+            Category: category._id,  // Match the category
+          }
+        },
+        {
+          $lookup: {
+            from: 'users', // Assuming your User model is named 'users'
+            localField: 'userId',
+            foreignField: '_id',
+            as: 'userDetails',
+          }
+        },
+        {
+          $unwind: '$userDetails', // Unwind the user details array from the lookup
+        },
+        {
+          $match: {
+            ...(location && { 
+              $or: [
+                { 'userDetails.statename': { $regex: new RegExp(`^${location}$`, 'i') } },
+                { 'userDetails.city': { $regex: new RegExp(`^${location}$`, 'i') } }
+              ] 
+            }),
+          }
+        },
+        {
+          $limit: 20,  // Limit to 20 products per category
+        },
+        {
+          $project: {
+            title: 1,  // Include the required fields from the product
+            description: 1,
+            pImage: 1,
+            userId: 1,
+            Category: 1,
+            slug: 1,
+            features: 1,
+            salePrice: 1,
+            regularPrice: 1,
+            // Add any other fields you need from the product model
+          }
+        }
+      ];
+
+      // Fetch the products using the aggregation pipeline
+      const products = await productModel.aggregate(productQuery);
+
+      // Attach products to the category object
+      category.products = products;
+
+      // Convert category to a plain JavaScript object to include 'products'
+      const categoryObject = category.toObject();
+
+      if (products.length === 0) {
+        return null;
+      }else{
+  // Return the updated category object with products
+  return {
+    ...categoryObject, // This will include the category fields
+    products: category.products, // Explicitly include the products field
+  };
+      }
+    
+    }));
+
+        // Filter out categories that have no products (i.e., where products is null)
+        const filteredCategories = categoriesWithProducts.filter(category => category !== null);
+
+    // Return response with the categories and their products
+    return res.status(200).send({
+      message: "Categories and Products fetched successfully",
+      success: true,
+      categoriesWithProducts:filteredCategories,
+    });
+
+  } catch (error) {
+    return res.status(500).send({
+      success: false,
+      message: `Error: ${error.message}`
+    });
+  }
+}
+
 
 
 export const SenderEnquireStatus = async (req, res) => {

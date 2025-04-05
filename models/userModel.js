@@ -64,6 +64,10 @@ const userSchema = mongoose.Schema({
     type: String,
     default: "",
   },
+  Doc1: {
+    type: String,
+    default: "",
+  },
   Doc2: {
     type: String,
     default: "",
@@ -74,7 +78,7 @@ const userSchema = mongoose.Schema({
   },
   department: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Departments', // Reference to the User model for the sender
+    ref: 'Category', // Reference to the User model for the sender
   },
   pHealthHistory: {
     type: String,

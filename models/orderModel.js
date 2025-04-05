@@ -5,8 +5,41 @@ const orderSchema = mongoose.Schema({
     type: Array,
     required: [true, "items is required"],
   },
-  status: {
+  service: {
     type: String,
+  },
+  fullname: {
+    type: String,
+  },
+  phone: {
+    type: Number,
+  },
+  email: {
+    type: String,
+  },
+  address: {
+    type: String,
+  },
+  pincode: {
+    type: String,
+  },
+  state: {
+    type: String,
+  },
+  statename: {
+    type: String,
+  },
+  city: {
+    type: String,
+  },
+  bookingDate: {
+    type: Date,
+  },
+  bookingTime: {
+    type: String, 
+  },
+  requirement: {
+    type: String, 
   },
   mode: {
     type: String,
@@ -21,17 +54,24 @@ const orderSchema = mongoose.Schema({
     type: String,
   },
   totalAmount: {
-    required: [true, "Total Amount is required"],
     type: Number,
   },
   userId: [{  // Changed field name to plural and set type as an array of ObjectIds
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    required: true,
   }],
   primary: {
     type: String,
-  }, payment: {
+  }, 
+  payment: {
+    type: Number,
+    default: 0,
+  },
+  status: {
+    type: Number,
+    default: 1,
+  },
+  leadStatus: {
     type: Number,
     default: 0,
   },
@@ -44,6 +84,25 @@ const orderSchema = mongoose.Schema({
   comment: {
     type: String,
   },
+  category: {
+    type: String,
+  },
+  type: {
+    type: Number,
+    default:0
+  },
+  agentId: {
+        // Changed field name to plural and set type as an array of ObjectIds
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+      },
+
+  asignId: {
+        // Changed field name to plural and set type as an array of ObjectIds
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+      },
+
 },
   { timestamps: true }
 );

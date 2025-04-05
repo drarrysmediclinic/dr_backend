@@ -9,7 +9,9 @@ const zonesSchema = new mongoose.Schema(
         primary: {
             type: String
         },
-
+        cities: {
+            type:Array
+        },
         status: {
             type: String,
         }
