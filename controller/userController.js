@@ -391,6 +391,7 @@ export const SignupUserType = async (req, res) => {
       DOB,
       address,
       city,
+      coverage
     } = req.body;
 
 
@@ -429,7 +430,7 @@ export const SignupUserType = async (req, res) => {
       statename,
       country,
       city,
-
+      coverage,
       userId,
     });
 
@@ -1612,8 +1613,15 @@ export const HomeSendEnquire = async (req, res) => {
     bookingDate,
     bookingTime,
     requirement,
-    category
+    category, 
+    longitude,
+    latitude,
   } = req.body;
+ 
+ if(!longitude && !latitude ){
+    console.log(longitude,latitude)
+    res.status(500).send("longitude and latitude is required");
+ }
  
   try {
     // Save data to the database
@@ -1632,6 +1640,8 @@ export const HomeSendEnquire = async (req, res) => {
       requirement,
       type:1,
       orderId:order_id,
+      longitude,
+      latitude,
       category: Array.isArray(category) ? category[0] : category  // Convert array to string
     });
 
@@ -2077,7 +2087,7 @@ export const GetAllCategoriesByParentIdController = async (req, res) => {
 export const GetAllCategoriesBySlugController = async (req, res) => {
   try {
     const { parentSlug } = req.params;
-    const { filter, price, page = 1, perPage = 2 } = req.query;
+    const { filter, price, page = 1, perPage = 2,location } = req.query;
 
     // Check if parentSlug is undefined or null
     if (!parentSlug) {
@@ -2130,6 +2140,20 @@ export const GetAllCategoriesBySlugController = async (req, res) => {
 
       filters.$or = priceFilters;
     }
+ 
+
+    // if (location) {
+    //   const trimmedLocation = location.trim();
+    
+    //   filters.coverage = {
+    //     $elemMatch: {
+    //       $regex: new RegExp(`^${trimmedLocation}$`, 'i'),
+    //     },
+    //   };
+    // }
+    
+    
+    
 
     const skip = (page - 1) * perPage;
 
@@ -2140,7 +2164,7 @@ export const GetAllCategoriesBySlugController = async (req, res) => {
       .skip(skip)
       .limit(perPage)
       .lean();
-
+console.log(products);
     const Procat = { Category: parentId, status: "true" }; // Add status filter for products
     const productsFilter = await productModel
       .find(Procat)
@@ -2757,22 +2781,44 @@ export const ViewAllZones = async (req, res) => {
   }
 };
 
+// export const ViewAllZonesOnly = async (req, res) => {
+//   try {
+//     // Get all products, populate user data
+//     const products = await productModel.find().populate('userId', 'statename city');
+
+//     // Extract statename and city from each product's associated user
+//     const locations = products.map(product => ({
+//       statename: product.userId?.statename,
+//       city: product.userId?.city,
+//     }));
+
+//     // Combine both statenames and cities into a single array
+//     const allLocations = [...locations.map(loc => loc.statename), ...locations.map(loc => loc.city)];
+
+//     // Remove duplicates by using a Set
+//     const uniqueLocations = [...new Set(allLocations)].filter(location => location != undefined);
+
+//     // Respond with the unique locations array
+//     res.status(200).json({ success: true, uniqueLocations });
+//   } catch (error) {
+//     console.error("Error getting locations:", error);
+//     res.status(500).json({ success: false, message: "Internal Server Error" });
+//   }
+// };
+
 export const ViewAllZonesOnly = async (req, res) => {
   try {
     // Get all products, populate user data
-    const products = await productModel.find().populate('userId', 'statename city');
+    const products = await productModel.find().populate('userId', 'coverage username email phone');
 
-    // Extract statename and city from each product's associated user
-    const locations = products.map(product => ({
-      statename: product.userId?.statename,
-      city: product.userId?.city,
-    }));
+    // Collect and flatten all coverage arrays from users
+    const allLocations = products
+      .map(product => product.userId?.coverage || [])
+      .flat(); // or .reduce((acc, val) => acc.concat(val), [])
 
-    // Combine both statenames and cities into a single array
-    const allLocations = [...locations.map(loc => loc.statename), ...locations.map(loc => loc.city)];
-
-    // Remove duplicates by using a Set
-    const uniqueLocations = [...new Set(allLocations)].filter(location => location != undefined);
+      console.log('allLocations',products)
+    // Remove duplicates and undefined
+    const uniqueLocations = [...new Set(allLocations)].filter(Boolean);
 
     // Respond with the unique locations array
     res.status(200).json({ success: true, uniqueLocations });
@@ -2781,8 +2827,6 @@ export const ViewAllZonesOnly = async (req, res) => {
     res.status(500).json({ success: false, message: "Internal Server Error" });
   }
 };
-
-
 
 export const ViewAllUserTaxes = async (req, res) => {
   try {
@@ -4803,6 +4847,8 @@ export const AuthUserByID = async (req, res) => {
           aadharno: existingUser.aadharno,
           pHealthHistory: existingUser.pHealthHistory,
           cHealthStatus: existingUser.cHealthStatus,
+          coverage: existingUser.coverage,
+
         },
       });
 
@@ -6621,7 +6667,7 @@ export const updateVendorProfileUser = async (req, res) => {
       city,
       confirm_password,
       about,
-      department
+      department, coverage
     } = req.body;
     console.log("Uploaded files:", req.files);
 
@@ -6644,6 +6690,7 @@ export const updateVendorProfileUser = async (req, res) => {
       city,
       about,
       department,
+      coverage
     };
 
     if(olduser.email !== email){
@@ -6714,12 +6761,19 @@ export const getCategoriesWithProducts = async (req, res) => {
           $unwind: '$userDetails', // Unwind the user details array from the lookup
         },
         {
+          // $match: {
+          //   ...(location && { 
+          //     $or: [
+          //       { 'userDetails.statename': { $regex: new RegExp(`^${location}$`, 'i') } },
+          //       { 'userDetails.city': { $regex: new RegExp(`^${location}$`, 'i') } }
+          //     ] 
+          //   }),
+          // }
           $match: {
-            ...(location && { 
-              $or: [
-                { 'userDetails.statename': { $regex: new RegExp(`^${location}$`, 'i') } },
-                { 'userDetails.city': { $regex: new RegExp(`^${location}$`, 'i') } }
-              ] 
+            ...(location && {
+              'userDetails.coverage': {
+                $elemMatch: { $regex: new RegExp(`^${location}$`, 'i') }
+              }
             }),
           }
         },

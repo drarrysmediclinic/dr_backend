@@ -9,6 +9,9 @@ const categorySchema = new mongoose.Schema(
     slide_head: {
       type: String,
     },
+    icon_image: {
+      type: String,
+    },
     slide_para: {
       type: String,
     },

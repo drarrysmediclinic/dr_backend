@@ -798,7 +798,7 @@ export const updateCategoryAdmin = async (req, res) => {
       metaDescription,
       metaKeywords,
       parent,
-      status, specifications, canonical
+      status, specifications, canonical, icon_image
     } = req.body;
 
     let updateFields = {
@@ -812,7 +812,7 @@ export const updateCategoryAdmin = async (req, res) => {
       metaDescription,
       metaKeywords,
       parent,
-      status, specifications, canonical
+      status, specifications, canonical, icon_image
     };
 
     const Category = await categoryModel.findByIdAndUpdate(id, updateFields, {

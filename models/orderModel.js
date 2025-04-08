@@ -97,12 +97,18 @@ const orderSchema = mongoose.Schema({
         ref: "User",
       },
 
-  asignId: {
+    asignId: {
         // Changed field name to plural and set type as an array of ObjectIds
         type: mongoose.Schema.Types.ObjectId,
         ref: "User",
       },
 
+      longitude: {
+        type: String,
+      },
+      latitude: {
+        type: String,
+      },
 },
   { timestamps: true }
 );

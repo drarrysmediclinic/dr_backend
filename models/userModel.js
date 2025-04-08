@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import bcrypt from "bcrypt";
+import { Coverage } from "puppeteer";
 
 const userSchema = mongoose.Schema({
   username: {
@@ -93,6 +94,11 @@ const userSchema = mongoose.Schema({
   },
   DOB: {
     type: Date,
+  },
+ coverage: {
+    type: Array,
+    default: [],
+
   },
 },
   { timestamps: true }
