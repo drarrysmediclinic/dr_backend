@@ -84,9 +84,11 @@ const orderSchema = mongoose.Schema({
   comment: {
     type: String,
   },
+  
   category: {
-    type: String,
-  },
+    type: [String],
+      default: [],
+},
   type: {
     type: Number,
     default:0

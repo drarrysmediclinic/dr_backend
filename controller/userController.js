@@ -1584,21 +1584,159 @@ export const HomeSendEnquire_old = async (req, res) => {
 
 
 
-export const HomeSendEnquire = async (req, res) => {
+// export const HomeSendEnquire = async (req, res) => {
 
   
-    // Calculate the auto-increment ID
-    const lastOrder = await orderModel.findOne().sort({ _id: -1 }).limit(1);
-    let order_id;
+//     // Calculate the auto-increment ID
+//     const lastOrder = await orderModel.findOne().sort({ _id: -1 }).limit(1);
+//     let order_id;
 
-    if (lastOrder) {
-      // Convert lastOrder.orderId to a number before adding 1
-      const lastOrderId = parseInt(lastOrder.orderId);
-      order_id = lastOrderId + 1;
-    } else {
-      order_id = 1;
-    }
+//     if (lastOrder) {
+//       // Convert lastOrder.orderId to a number before adding 1
+//       const lastOrderId = parseInt(lastOrder.orderId);
+//       order_id = lastOrderId + 1;
+//     } else {
+//       order_id = 1;
+//     }
 
+
+//   const {
+//     fullname,
+//     email,
+//     phone,
+//     service,
+//     pincode,
+//     state,
+//     statename,
+//     address,
+//     city,
+//     bookingDate,
+//     bookingTime,
+//     requirement,
+//     category, 
+//     longitude,
+//     latitude,
+//   } = req.body;
+ 
+//  if(!longitude && !latitude ){
+//     console.log(longitude,latitude)
+//     res.status(500).send("longitude and latitude is required");
+//  }
+ 
+//   try {
+//     // Save data to the database
+//     const newEnquire = new orderModel({
+//       fullname,
+//       email,
+//       phone,
+//       service,
+//       pincode,
+//       state,
+//       statename,
+//       address,
+//       city,
+//       bookingDate,
+//       bookingTime,
+//       requirement,
+//       type:1,
+//       orderId:order_id,
+//       longitude,
+//       latitude,
+//       category: Array.isArray(category) ? category[0] : category  // Convert array to string
+//     });
+
+//     await newEnquire.save();
+
+        
+// //        // Create the notification data object with dynamic values
+// // const notificationData = {
+// //   mobile: "918100188188",  // Replace with dynamic value if needed
+// //   templateid: "1193466729031008", // Template ID
+// //   overridebot: "yes", // Optional: Set to "yes" or "no"
+// //   template: {
+// //     components: [
+// //       {
+// //         type: "body",
+// //         parameters: [
+// //           { type: "text", text: fullname || "NA" },  
+// //           { type: "text", text: phone || "NA" },  
+// //           { type: "text", text: email || "NA" }, 
+// //           { type: "text", text: service || "NA" }, 
+// //           { type: "text", text: QTY || "NA" }  
+// //         ]
+// //       }
+// //     ]
+// //   }
+// // };
+  
+// //    const WHATSAPP =   await axios.post(process.env.WHATSAPPAPI, notificationData, {
+// //         headers: {
+// //           "API-KEY": process.env.WHATSAPPKEY,
+// //           "Content-Type": "application/json"
+// //         }
+// //       });
+// //       console.log('WHATSAPP',WHATSAPP)
+
+//     // Configure nodemailer transporter
+//     // const transporter = nodemailer.createTransport({
+//     //   // SMTP configuration
+//     //   host: process.env.MAIL_HOST, // Update with your SMTP host
+//     //   port: process.env.MAIL_PORT, // Update with your SMTP port
+//     //   secure: process.env.MAIL_ENCRYPTION, // Set to true if using SSL/TLS
+//     //   auth: {
+//     //     user: process.env.MAIL_USERNAME, // Update with your email address
+//     //     pass: process.env.MAIL_PASSWORD, // Update with your email password
+//     //   },
+//     // });
+
+//     // // Conditional recipient list
+//     // const recipients = userEmail
+//     //   ? `${userEmail}, ${process.env.MAIL_TO_ADDRESS}`
+//     //   : process.env.MAIL_TO_ADDRESS;
+
+//     // // Email message
+//     // const mailOptions = {
+//     //   from: process.env.MAIL_FROM_ADDRESS, // Update with your email address
+//     //   to: recipients, // Update with your email address
+//     //   subject: "New Enquire Form Submission",
+//     //   text: `Name: ${fullname}\nEmail: ${email}\nPhone: ${phone}\nService: ${service}\nQTY:${QTY}`,
+//     // };
+
+//     // Send email
+//     // transporter.sendMail(mailOptions, (error, info) => {
+//     //   if (error) {
+//     //     console.error(error);
+//     //     res.status(500).send("Failed to send email");
+//     //   } else {
+//     //     console.log("Email sent: " + info.response);
+//     //     res.status(200).send("Email sent successfully");
+//     //   }
+//     // });
+
+//     res.status(200).send("Email sent successfully");
+
+
+//   } catch (error) {
+//     console.error("Error in send data:", error);
+//     return res.status(500).json({
+//       success: false,
+//       message: "Internal Server Error",
+//     });
+//   }
+// };
+
+export const HomeSendEnquire = async (req, res) => {
+  
+  // Calculate the auto-increment ID
+  const lastOrder = await orderModel.findOne().sort({ _id: -1 }).limit(1);
+  let order_id;
+
+  if (lastOrder) {
+    const lastOrderId = parseInt(lastOrder.orderId);
+    order_id = lastOrderId + 1;
+  } else {
+    order_id = 1;
+  }
 
   const {
     fullname,
@@ -1617,11 +1755,7 @@ export const HomeSendEnquire = async (req, res) => {
     longitude,
     latitude,
   } = req.body;
- 
- if(!longitude && !latitude ){
-    console.log(longitude,latitude)
-    res.status(500).send("longitude and latitude is required");
- }
+
  
   try {
     // Save data to the database
@@ -1638,92 +1772,28 @@ export const HomeSendEnquire = async (req, res) => {
       bookingDate,
       bookingTime,
       requirement,
-      type:1,
-      orderId:order_id,
+      type: 1,
+      orderId: order_id,
       longitude,
       latitude,
-      category: Array.isArray(category) ? category[0] : category  // Convert array to string
+      category: Array.isArray(category) ? category[0] : category, // Convert array to string
     });
 
     await newEnquire.save();
 
-        
-//        // Create the notification data object with dynamic values
-// const notificationData = {
-//   mobile: "918100188188",  // Replace with dynamic value if needed
-//   templateid: "1193466729031008", // Template ID
-//   overridebot: "yes", // Optional: Set to "yes" or "no"
-//   template: {
-//     components: [
-//       {
-//         type: "body",
-//         parameters: [
-//           { type: "text", text: fullname || "NA" },  
-//           { type: "text", text: phone || "NA" },  
-//           { type: "text", text: email || "NA" }, 
-//           { type: "text", text: service || "NA" }, 
-//           { type: "text", text: QTY || "NA" }  
-//         ]
-//       }
-//     ]
-//   }
-// };
-  
-//    const WHATSAPP =   await axios.post(process.env.WHATSAPPAPI, notificationData, {
-//         headers: {
-//           "API-KEY": process.env.WHATSAPPKEY,
-//           "Content-Type": "application/json"
-//         }
-//       });
-//       console.log('WHATSAPP',WHATSAPP)
-
-    // Configure nodemailer transporter
-    // const transporter = nodemailer.createTransport({
-    //   // SMTP configuration
-    //   host: process.env.MAIL_HOST, // Update with your SMTP host
-    //   port: process.env.MAIL_PORT, // Update with your SMTP port
-    //   secure: process.env.MAIL_ENCRYPTION, // Set to true if using SSL/TLS
-    //   auth: {
-    //     user: process.env.MAIL_USERNAME, // Update with your email address
-    //     pass: process.env.MAIL_PASSWORD, // Update with your email password
-    //   },
-    // });
-
-    // // Conditional recipient list
-    // const recipients = userEmail
-    //   ? `${userEmail}, ${process.env.MAIL_TO_ADDRESS}`
-    //   : process.env.MAIL_TO_ADDRESS;
-
-    // // Email message
-    // const mailOptions = {
-    //   from: process.env.MAIL_FROM_ADDRESS, // Update with your email address
-    //   to: recipients, // Update with your email address
-    //   subject: "New Enquire Form Submission",
-    //   text: `Name: ${fullname}\nEmail: ${email}\nPhone: ${phone}\nService: ${service}\nQTY:${QTY}`,
-    // };
-
-    // Send email
-    // transporter.sendMail(mailOptions, (error, info) => {
-    //   if (error) {
-    //     console.error(error);
-    //     res.status(500).send("Failed to send email");
-    //   } else {
-    //     console.log("Email sent: " + info.response);
-    //     res.status(200).send("Email sent successfully");
-    //   }
-    // });
-
-    res.status(200).send("Email sent successfully");
-
+    // Send the success response once everything is processed
+    res.status(200).send("Enquiry submitted successfully");
 
   } catch (error) {
     console.error("Error in send data:", error);
+    // Handle error and send response only once
     return res.status(500).json({
       success: false,
       message: "Internal Server Error",
     });
   }
 };
+
 
 
 export const contactSendEnquire = async (req, res) => {
@@ -2141,16 +2211,18 @@ export const GetAllCategoriesBySlugController = async (req, res) => {
       filters.$or = priceFilters;
     }
  
-
-    // if (location) {
-    //   const trimmedLocation = location.trim();
+    if (location) {
+      const trimmedLocation = location.trim();
+      const matchingUsers = await userModel.find({
+        coverage: { $elemMatch: { $regex: new RegExp(`^${trimmedLocation}$`, 'i') } }
+      }).select('_id');
     
-    //   filters.coverage = {
-    //     $elemMatch: {
-    //       $regex: new RegExp(`^${trimmedLocation}$`, 'i'),
-    //     },
-    //   };
-    // }
+      const matchingUserIds = matchingUsers.map(user => user._id);
+    
+      if (matchingUserIds.length > 0) {
+        filters['userId'] = { $in: matchingUserIds };
+    }
+  }
     
     
     
@@ -2160,11 +2232,12 @@ export const GetAllCategoriesBySlugController = async (req, res) => {
     // Fetch products based on filters with pagination
     const products = await productModel
       .find(filters)
-      .select("_id title regularPrice salePrice pImage variations slug features")
-      .skip(skip)
+      .select("_id title regularPrice salePrice pImage variations slug features userId")
+      .populate('userId', 'username phone email coverage')
+       .skip(skip)
       .limit(perPage)
-      .lean();
-console.log(products);
+      
+ 
     const Procat = { Category: parentId, status: "true" }; // Add status filter for products
     const productsFilter = await productModel
       .find(Procat)
@@ -2530,7 +2603,8 @@ export const AddWishListByUser = async (req, res) => {
 export const getProductIdUserBySlug = async (req, res) => {
   try {
     const { slug } = req.params;
-    const Product = await productModel.findOne({ slug: slug });
+    const Product = await productModel.findOne({ slug: slug })
+     .populate('userId', 'username phone email coverage');
     if (!Product) {
       return res.status(200).send({
         message: "product Not Found By Id",

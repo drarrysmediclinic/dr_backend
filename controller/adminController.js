@@ -39,7 +39,8 @@ import planCategoryModel from "../models/planCategoryModel.js";
 import planModel from "../models/planModel.js";
 import departmentsModel from "../models/departmentsModel.js";
 import buyPlanModel from "../models/buyPlanModel.js";
-
+import mongoose from 'mongoose';
+import geolib from 'geolib';
 
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
@@ -1882,6 +1883,10 @@ export const getAllOrderAdmin = async (req, res) => {
         path: "agentId",
         model: userModel,
         select: "username",
+      }).populate({
+        path: "asignId",
+        model: userModel,
+        select: "username",
       }).lean();
 
 
@@ -1913,33 +1918,153 @@ export const getAllOrderAdmin = async (req, res) => {
 
 
 
-export const AdminGetAllEmployee = async (req, res) => {
-  try {
-    // Extract the category from the query parameters
-    const { category } = req.query; 
+// export const AdminGetAllEmployee = async (req, res) => {
+//   try {
+//     // Extract the category from the query parameters
+//     const { category } = req.query; 
 
-    console.log(req.query);
+//     console.log(req.query);
+//     // Build the filter object
+//     const filter = { type: 1 };
+//     if (category) {
+//       filter.department = category; // Add category filter only if it exists
+//     }
+
+//     // Fetch users based on filter
+//     const Users = await userModel.find(filter, '_id username');
+
+//     if (!Users || Users.length === 0) {
+//       return res.status(200).send({
+//         message: 'No User Found',
+//         success: false,
+//       });
+//     }
+
+//     return res.status(200).send({
+//       message: 'All User List',
+//       proCount: Users.length,
+//       success: true,
+//       Users,
+//     });
+
+//   } catch (error) {
+//     return res.status(500).send({
+//       message: `Error while fetching employees: ${error.message}`,
+//       success: false,
+//       error,
+//     });
+//   }
+// };
+
+export const AdminGetAllEmployee_old = async (req, res) => { 
+  try {
+    // Extract the category (which can be an array of ObjectIds) from the query parameters
+    const { category ,type ,longitude,latitude} = req.query;
+
+    if(!category || !type){
+      return res.status(200).send({
+        message: 'No User Found',
+        success: false,
+      });
+    }
+ 
     // Build the filter object
-    const filter = { type: 1 };
+    const filter = { type };  // Only fetch employees with type = 1 (assuming "employee")
+
+    // Check if 'category' (which is an array of ObjectIds) is passed
     if (category) {
-      filter.department = category; // Add category filter only if it exists
+      // Ensure the category is an array
+      const categories = Array.isArray(category) ? category : [category];
+      filter.department = { $in: categories.map(id => new mongoose.Types.ObjectId(id)) };  // Use 'new' keyword to create ObjectIds
     }
 
-    // Fetch users based on filter
-    const Users = await userModel.find(filter, '_id username');
+    // Fetch users based on the filter
+    const users = await userModel.find(filter, '_id username department longitude latitude');
 
-    if (!Users || Users.length === 0) {
+    console.log('Users:', users);
+
+    if (!users || users.length === 0) {
+      return res.status(200).send({
+        message: 'No User Found',
+        success: false,
+      });
+    }
+    
+
+    return res.status(200).send({
+      message: 'All User List',
+      proCount: users.length,
+      success: true,
+      users,
+    });
+
+  } catch (error) {
+    return res.status(500).send({
+      message: `Error while fetching employees: ${error.message}`,
+      success: false,
+      error,
+    });
+  }
+};
+
+export const AdminGetAllEmployee = async (req, res) => { 
+  try {
+    // Extract the category (which can be an array of ObjectIds), type, and coordinates from query parameters
+    const { category, type, longitude, latitude } = req.query;
+
+    if (!category || !type || !longitude || !latitude) {
+      return res.status(200).send({
+        message: 'Missing required parameters.',
+        success: false,
+      });
+    }
+
+    // Build the filter object
+    const filter = { type };  // Only fetch employees with the type (assuming "employee")
+
+    // Check if 'category' (which is an array of ObjectIds) is passed
+    if (category) {
+      // Ensure the category is an array
+      const categories = Array.isArray(category) ? category : [category];
+      filter.department = { $in: categories.map(id => new mongoose.Types.ObjectId(id)) };  // Use 'new' to create ObjectIds
+    }
+
+    // Fetch users based on the filter
+    const users = await userModel.find(filter, '_id username department longitude latitude');
+
+    if (!users || users.length === 0) {
       return res.status(200).send({
         message: 'No User Found',
         success: false,
       });
     }
 
+    // Convert the users' coordinates and calculate distances
+    const usersWithDistances = users.map(user => {
+      // Calculate distance using geolib library (in meters)
+      const distance = geolib.getDistance(
+        { latitude: parseFloat(latitude), longitude: parseFloat(longitude) },
+        { latitude: parseFloat(user.latitude), longitude: parseFloat(user.longitude) }
+      );
+
+      // Add the distance in meters and kilometers to the user object
+      return {
+        ...user.toObject(),  // Convert mongoose document to plain JavaScript object
+        distance: {
+          meters: distance,
+          kilometers: distance / 1000,
+        },
+      };
+    });
+
+    // Sort users by distance (ascending order)
+    usersWithDistances.sort((a, b) => a.distance.meters - b.distance.meters);
+
     return res.status(200).send({
       message: 'All User List',
-      proCount: Users.length,
+      proCount: usersWithDistances.length,
       success: true,
-      Users,
+      users: usersWithDistances,
     });
 
   } catch (error) {
@@ -1952,10 +2077,11 @@ export const AdminGetAllEmployee = async (req, res) => {
 };
 
 
+
 export const editOrderEmployeeAdmin = async (req, res) => {
   try {
     const { id } = req.params;
-    const { agentId } = req.body;
+    const { agentId ,asignId } = req.body;
 
 
     const order = await orderModel.findById(id);
@@ -1967,7 +2093,11 @@ export const editOrderEmployeeAdmin = async (req, res) => {
       });
     }
 
-    order.agentId = agentId;
+    if(agentId){
+      order.agentId = agentId;
+    }else if(asignId){
+      order.asignId = asignId;
+    }
 
     await order.save();
 
@@ -4081,45 +4211,60 @@ export const deletePlanAdmin = async (req, res) => {
 
 export const UserloginAll = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, password, latitude, longitude } = req.body;
+
+    // Check if email and password are provided
     if (!email || !password) {
       return res.status(400).send({
         success: false,
-        message: "please fill all fields",
+        message: "Please fill all fields",
       });
     }
+
+    // Find the user by email
     const admin = await userModel.findOne({ email });
     if (!admin) {
       return res.status(401).send({
         success: false,
-        message: "email is not registerd",
+        message: "Email is not registered",
         admin,
       });
     }
-    // password check
 
+    // Check if the password matches
     const isMatch = await bcrypt.compare(password, admin.password);
     if (!isMatch) {
       return res.status(401).send({
         success: false,
-        message: "password is not incorrect",
+        message: "Password is incorrect",
         admin,
       });
     }
 
+    // Update the user's latitude and longitude if provided
+    if (latitude && longitude) {
+      admin.latitude = latitude;
+      admin.longitude = longitude;
+
+      // Save the updated user details
+      await admin.save();
+    }
+
+    // Send the success response
     return res.status(200).send({
       success: true,
-      message: "login sucesssfully",
+      message: "Login successful",
       admin,
     });
   } catch (error) {
     return res.status(500).send({
-      message: `error on login ${error}`,
+      message: `Error during login: ${error}`,
       success: false,
       error,
     });
   }
 };
+
 
 
 // for department model

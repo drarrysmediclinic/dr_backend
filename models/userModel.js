@@ -1,7 +1,6 @@
 import mongoose from "mongoose";
 import bcrypt from "bcrypt";
-import { Coverage } from "puppeteer";
-
+ 
 const userSchema = mongoose.Schema({
   username: {
     type: String,
@@ -77,10 +76,10 @@ const userSchema = mongoose.Schema({
     type: String,
     default: "",
   },
-  department: {
+  department: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Category', // Reference to the User model for the sender
-  },
+  }],
   pHealthHistory: {
     type: String,
     default: "",
@@ -96,9 +95,14 @@ const userSchema = mongoose.Schema({
     type: Date,
   },
  coverage: {
-    type: Array,
+  type: [String],
     default: [],
-
+  },
+  longitude: {
+    type: String,
+  },
+  latitude: {
+    type: String,
   },
 },
   { timestamps: true }
