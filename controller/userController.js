@@ -1795,6 +1795,90 @@ export const HomeSendEnquire = async (req, res) => {
 };
 
 
+export const HomeSendEnquireCatgeory = async (req, res) => {
+  const {
+    fullname,
+    email,
+    phone,
+    service,
+    requirement,
+    userId,
+    userEmail,
+  } = req.body;
+
+  console.log(userId, userEmail);
+
+  try {
+
+    // Check if phone number already exists
+    const existingPhone = await userModel.findOne({ phone });
+    if (existingPhone) {
+      // Just save the enquiry, do not create user
+      const newEnquire = new enquireModel({
+        fullname,
+        email,
+        phone,
+        service,
+        requirement,
+        userId,
+        userEmail,
+      });
+
+      await newEnquire.save();
+
+      return res.status(200).json({
+        success: true,
+        message: "Enquiry sent successfully. User already exists by phone.",
+      });
+    }
+
+        // Check if email already exists
+        const existingEmail = await userModel.findOne({ email });
+        if (existingEmail) {
+          return res.status(400).json({
+            success: false,
+            message: "Email already exists",
+          });
+        }
+    
+    // If both email and phone are new, create new user and save enquiry
+    const user = new userModel({
+      username: fullname,
+      email,
+      phone,
+      type:2
+    });
+
+    await user.save();
+
+    const newEnquire = new enquireModel({
+      fullname,
+      email,
+      phone,
+      service,
+      requirement,
+      userId,
+      userEmail,
+    });
+
+    await newEnquire.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Enquiry sent and user created successfully",
+      user,
+    });
+
+  } catch (error) {
+    console.error("Error in sending data:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal Server Error",
+    });
+  }
+};
+
+
 
 export const contactSendEnquire = async (req, res) => {
   const { name, email, phone, message } = req.body;
@@ -2088,19 +2172,32 @@ export const GetAllCategoriesByParentIdController = async (req, res) => {
 
     const filters = { Category: parentId }; // Initialize filters with parent category filter
 
+
+    // Handle variation filters
     if (filter) {
-      // Parse the filter parameter
-      const filterParams = JSON.parse(filter);
+      let filterParams;
+      try {
+        filterParams = JSON.parse(filter);
+      } catch (err) {
+        console.error("Invalid filter JSON:", err);
+        return res.status(400).json({ success: false, message: "Invalid filter format." });
+      }
 
-      // Iterate through each parameter in the filter
-      Object.keys(filterParams).forEach((param) => {
-        // Split parameter values by comma if present
-        const paramValues = filterParams[param].split(",");
-        const variationsKey = `variations.${param}.${param}`;
-
-        // Handle multiple values for the parameter
-        filters[variationsKey] = { $in: paramValues };
+      // Loop through filter params and create dynamic queries for each variation name
+      const variationFilters = Object.entries(filterParams).map(([variationName, valueString]) => {
+        const values = valueString.split(",").map(v => v.trim()).filter(Boolean);
+        return {
+          $elemMatch: {
+            name: variationName,
+            value: { $in: values },
+          }
+        };
       });
+
+      // If variations are provided in the filter, apply them to the main filters
+      if (variationFilters.length > 0) {
+        filters.variations = { $all: variationFilters };
+      }
     }
 
     // Check if price parameter is provided and not blank
@@ -2188,14 +2285,34 @@ export const GetAllCategoriesBySlugController = async (req, res) => {
 
     const filters = { Category: parentId, status: "true" }; // Add status filter for products
 
+  
+    // Handle variation filters
     if (filter) {
-      const filterParams = JSON.parse(filter);
-      Object.keys(filterParams).forEach((param) => {
-        const paramValues = filterParams[param].split(",");
-        const variationsKey = `variations.${param}.${param}`;
-        filters[variationsKey] = { $in: paramValues };
+      let filterParams;
+      try {
+        filterParams = JSON.parse(filter);
+      } catch (err) {
+        console.error("Invalid filter JSON:", err);
+        return res.status(400).json({ success: false, message: "Invalid filter format." });
+      }
+
+      // Loop through filter params and create dynamic queries for each variation name
+      const variationFilters = Object.entries(filterParams).map(([variationName, valueString]) => {
+        const values = valueString.split(",").map(v => v.trim()).filter(Boolean);
+        return {
+          $elemMatch: {
+            name: variationName,
+            value: { $in: values },
+          }
+        };
       });
+
+      // If variations are provided in the filter, apply them to the main filters
+      if (variationFilters.length > 0) {
+        filters.variations = { $all: variationFilters };
+      }
     }
+
 
     // Check if price parameter is provided
     if (price && price.trim() !== "") {
@@ -3196,7 +3313,7 @@ export const SignupLoginUser_old = async (req, res) => {
     });
   }
 };
-
+ 
 export const SignupLoginUser = async (req, res) => {
   try {
     const { phone } = req.body;
@@ -3266,14 +3383,19 @@ export const SignupLoginUser = async (req, res) => {
 
       // block
       console.log(otp);
-      await sendLogOTP(phone, otp);
-      return res.status(200).json({
-        success: true,
-        message: "New User found",
-        newUser: true,
-        otp: ecryptOTP,
-      });
-    
+      // await sendLogOTP(phone, otp);
+      // return res.status(200).json({
+      //   success: true,
+      //   message: "New User found",
+      //   newUser: true,
+      //   otp: ecryptOTP,
+      // });
+      return res.status(400).json({
+        success: false,
+        message: "User Not Found",
+        
+       });
+
     }
   } catch (error) {
     console.error("Error on login:", error);
